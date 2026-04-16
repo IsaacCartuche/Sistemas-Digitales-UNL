@@ -53,15 +53,17 @@ void leerBoton(){
 }
 
 void patronSecuencia() {
-
-  for (int i = 0; i < 6; i++) {
+  int i = 0; 
+  while (i < 6) {
     digitalWrite(LED_PINS[i], HIGH);
     delay(100);
+    i++;
   }
-
-  for (int i = 0; i < 6; i++) {
+  i = 0; 
+  while (i < 6) {
     digitalWrite(LED_PINS[i], LOW);
     delay(100);
+    i++;
   }
 }
 
