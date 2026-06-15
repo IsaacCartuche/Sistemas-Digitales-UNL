@@ -1,16 +1,19 @@
 #include <Arduino_FreeRTOS.h>
 #include <queue.h>
 #include <semphr.h>
+#include <LiquidCrystal.h> 
 
 // ==========================================
 // CONFIGURACIÓN DE HARDWARE Y CONSTANTES
 // ==========================================
-const int PIN_VENTILADORES = 9; // Pin PWM conectado a las bases de los 2N2222
-const int PIN_LM35 = A0;        // Pin analógico del sensor de temperatura
+const int PIN_VENTILADORES = 9; 
+const int PIN_LM35 = A0;      
+
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
 // Constantes térmicas (Umbrales)
-const float TEMP_MIN = 25.0;
-const float TEMP_MAX = 40.0;
+const float TEMP_MIN = 18.0;
+const float TEMP_MAX = 20.0;
 
 // Constantes para el cálculo de CPU
 // (Aproximación de ciclos de Idle por segundo en un ATmega328P libre)
@@ -50,6 +53,10 @@ void setup() {
     while (!Serial) {;} 
     Serial.println(F("Iniciando SO de Centro de Datos Verde..."));
 
+    // Inicializar la pantalla LCD (16 columnas, 2 filas)
+    lcd.begin(16, 2);
+    lcd.print("Iniciando SO...");
+
     // Inicialización de colas y mutex
     xQueueTemp = xQueueCreate(3, sizeof(float));
     xMutexCPU = xSemaphoreCreateMutex();
@@ -68,8 +75,11 @@ void setup() {
         xTaskCreate(vTaskCPU_Monitor, "CPUMon", 85, NULL, 4, NULL);
         
         Serial.println(F("Planificador listo."));
+        lcd.clear(); // Limpiar el LCD antes de empezar a mostrar telemetría
     } else {
         Serial.println(F("Error de memoria RAM."));
+        lcd.clear();
+        lcd.print("Error de RAM");
         while (1); 
     }
     // El planificador arranca automáticamente tras salir del setup
@@ -196,15 +206,24 @@ void vTaskTelemetry(void *pvParameters) {
     const TickType_t xFrecuencia = 2000 / portTICK_PERIOD_MS; // 2000 ms
 
     for (;;) {
-        // Imprimir datos formateados
-        Serial.print(F("Temp: "));
+        // Imprimir en Monitor Serie
+        Serial.print("Temp: ");
         Serial.print(g_currentTemp, 1);
-        Serial.print(F(" C | PWM: "));
+        Serial.print(" C | PWM: ");
         Serial.print(g_pwmDutyPorcentaje);
-        Serial.print(F(" % | CPU: "));
+        Serial.print(" % | CPU: ");
         Serial.print(g_cpuUsage, 1);
-        Serial.println(F(" %"));
+        Serial.println(" %");
 
+        // Imprimir en Pantalla LCD
+        lcd.setCursor(0, 0);
+        lcd.print("T:"); lcd.print(g_currentTemp, 1); lcd.print("C ");
+        lcd.print("P:"); lcd.print(g_pwmDutyPorcentaje); lcd.print("%  ");
+        
+        lcd.setCursor(0, 1);
+        lcd.print("CPU: "); lcd.print(g_cpuUsage, 1); lcd.print("%    ");
+
+        // Ceder el control y esperar hasta el siguiente ciclo (sin usar delay)
         vTaskDelayUntil(&xLastWakeTime, xFrecuencia);
     }
 }
